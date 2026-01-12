@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squid Game Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;700&display=swap');
+
+        body {
+            background-color: #0d0d0d;
+            color: #ffffff;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: #1a1a1a;
+            border: 2px solid #ed1b76;
+            border-radius: 15px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 0 20px rgba(237, 27, 118, 0.3);
+            text-align: center;
+            position: relative;
+        }
+
+        .shapes {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .shape {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #ffffff;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .shape:active { transform: scale(1.2); }
+
+        .circle { border-radius: 50%; }
+        .triangle { 
+            width: 0; height: 0; 
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 30px solid white;
+        }
+        .square { }
+
+        input {
+            background: #262626;
+            border: 1px solid #333;
+            color: white;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input:focus { border-color: #037a76; }
+
+        .btn-main {
+            background-color: #ed1b76;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            width: 100%;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid #037a76;
+            color: #037a76;
+            margin-top: 10px;
+        }
+
+        #message-box, #biometry-screen, #admin-login, #admin-panel {
+            display: none;
+        }
+
+        .biometry-circle {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #ed1b76;
+            border-radius: 50%;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .fingerprint-btn {
+            width: 80px;
+            height: 80px;
+            background: #333;
+            border-radius: 10px;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px dashed #ed1b76;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #players-list {
+            display: none;
+            margin-top: 20px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+
+        .player-item {
+            padding: 8px;
+            border-bottom: 1px solid #222;
+            font-size: 0.85rem;
+        }
+
+        .player-date { color: #ed1b76; }
+        .reg-time { color: #666; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="shapes">
+            <div class="shape circle"></div>
+            <div class="shape triangle"></div>
+            <div class="shape square" id="secretTrigger"></div>
+        </div>
+        
+        <!-- Main Form -->
+        <div id="main-ui">
+            <h1 class="text-2xl font-bold mb-6 text-[#ed1b76]">РЕГИСТРАЦИЯ</h1>
+            <form id="registrationForm">
+                <input type="text" id="userName" placeholder="Имя Фамилия" required>
+                <input type="date" id="userDob" required>
+                <button type="submit" class="btn-main">Участвовать</button>
+            </form>
+            <button id="hostBtn" class="btn-main btn-secondary">Я ведущий</button>
+        </div>
+
+        <!-- Biometry Screen -->
+        <div id="biometry-screen">
+            <h2 class="text-xl font-bold text-[#ed1b76]">ПРОВЕРКА ЛИЧНОСТИ</h2>
+            <div id="face-scan">
+                <div class="biometry-circle">👤</div>
+                <p class="text-sm text-gray-400">Сканирование лица...</p>
+            </div>
+            <div id="fingerprint-scan" class="hidden">
+                <div class="fingerprint-btn">🖐️</div>
+                <p class="text-sm text-gray-400">Приложите отпечаток</p>
+            </div>
+        </div>
+
+        <!-- Admin Login -->
+        <div id="admin-login">
+            <h2 class="text-lg font-bold text-[#ed1b76] mb-4">ДОБРО ПОЖАЛОВАТЬ</h2>
+            <p class="text-xs mb-4">Введите пароль доступа</p>
+            <input type="password" id="adminPassword" placeholder="PASSWORD">
+            <button id="loginBtn" class="btn-main">ВХОД</button>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="admin-panel">
+            <h2 class="text-xl font-bold text-green-500 mb-4">МЕНЮ ВЕДУЩЕГО</h2>
+            <div class="text-left space-y-2 text-sm">
+                <p>• Управление игроками: ACTIVE</p>
+                <p>• Статус системы: ONLINE</p>
+                <p>• Режим игры: ОЖИДАНИЕ</p>
+            </div>
+            <button onclick="location.reload()" class="btn-main btn-secondary">ВЫХОД</button>
+        </div>
+
+        <div id="message-box">
+            Спасибо за участие, игра будет проводиться 12.01.2026, 16:00 - 18:00
+        </div>
+
+        <button id="toggleList" class="btn-main btn-secondary">Список игроков</button>
+        
+        <div id="players-list">
+            <h3 class="text-sm font-bold mb-2 text-gray-400">ЗАРЕГИСТРИРОВАННЫЕ УЧАСТНИКИ:</h3>
+            <div id="listContent">Загрузка...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyARZvFpMMn5t8pg5gb2bWA6OrZC1L8DBSA",
+            authDomain: "my-pet-c8684.firebaseapp.com",
+            projectId: "my-pet-c8684",
+            storageBucket: "my-pet-c8684.firebasestorage.app",
+            messagingSenderId: "102742166711",
+            appId: "1:102742166711:web:aa6b251fd6d6c993c71132"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'squid-game-001';
+
+        // Audio Objects
+        const faceFailSound = new Audio('https://files.catbox.moe/gu83qq.m4a');
+        const fingerFailSound = new Audio('https://files.catbox.moe/ays1m0.m4a');
+        const adminAccessSound = new Audio('https://files.catbox.moe/tdhc31.m4a');
+
+        async function start() {
+            try { await signInAnonymously(auth); loadPlayers(); } catch (err) {}
+        }
+
+        // UI elements
+        const hostBtn = document.getElementById('hostBtn');
+        const mainUi = document.getElementById('main-ui');
+        const biometry = document.getElementById('biometry-screen');
+        const faceScan = document.getElementById('face-scan');
+        const fingerScan = document.getElementById('fingerprint-scan');
+        const secretTrigger = document.getElementById('secretTrigger');
+        const adminLogin = document.getElementById('admin-login');
+        const adminPanel = document.getElementById('admin-panel');
+        const toggleListBtn = document.getElementById('toggleList');
+
+        // Secret logic: Square trigger
+        secretTrigger.onclick = () => {
+            mainUi.style.display = 'none';
+            biometry.style.display = 'none';
+            adminLogin.style.display = 'block';
+            toggleListBtn.style.display = 'none';
+        };
+
+        // Biometry flow
+        hostBtn.onclick = () => {
+            mainUi.style.display = 'none';
+            biometry.style.display = 'block';
+            
+            setTimeout(() => {
+                faceFailSound.play();
+                faceScan.innerHTML = '<div class="biometry-circle text-red-500">❌</div><p class="text-red-500">Лицо не распознано</p>';
+                setTimeout(() => {
+                    faceScan.classList.add('hidden');
+                    fingerScan.classList.remove('hidden');
+                }, 1500);
+            }, 2000);
+        };
+
+        fingerScan.onclick = () => {
+            fingerFailSound.play();
+            fingerScan.innerHTML = '<div class="biometry-circle text-red-500">❌</div><p class="text-red-500">Отпечаток не распознан</p>';
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        };
+
+        // Password verification
+        document.getElementById('loginBtn').onclick = () => {
+            const pass = document.getElementById('adminPassword').value;
+            if (pass === "ILOVESOFKA") {
+                adminAccessSound.play();
+                adminLogin.style.display = 'none';
+                adminPanel.style.display = 'block';
+            } else {
+                alert("ОШИБКА ДОСТУПА");
+                location.reload();
+            }
+        };
+
+        // Firebase Logic
+        const form = document.getElementById('registrationForm');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            if (!auth.currentUser) return;
+            const name = document.getElementById('userName').value;
+            const dob = document.getElementById('userDob').value;
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'players'), {
+                    name, dob, timestamp: serverTimestamp()
+                });
+                form.style.display = 'none';
+                hostBtn.style.display = 'none';
+                document.getElementById('message-box').style.display = 'block';
+            } catch (error) {}
+        };
+
+        function loadPlayers() {
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'players'), (snapshot) => {
+                const list = document.getElementById('listContent');
+                list.innerHTML = '';
+                const players = [];
+                snapshot.forEach(doc => players.push(doc.data()));
+                players.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                players.forEach(p => {
+                    const time = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleTimeString() : '...';
+                    const div = document.createElement('div');
+                    div.className = 'player-item';
+                    div.innerHTML = `<div><b>${p.name}</b> (${p.dob})</div><div class="reg-time">Зарегистрирован: ${time}</div>`;
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        toggleListBtn.onclick = () => {
+            const list = document.getElementById('players-list');
+            list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        };
+
+        start();
+    </script>
+</body>
+</html>
