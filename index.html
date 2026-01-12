@@ -89,7 +89,13 @@
             margin-top: 10px;
         }
 
-        #message-box, #biometry-screen, #admin-login, #admin-panel {
+        .btn-danger {
+            background-color: #7a0303;
+            color: white;
+            margin-top: 10px;
+        }
+
+        #message-box, #biometry-screen, #admin-login, #admin-panel, #already-registered, #hacking-alert {
             display: none;
         }
 
@@ -125,24 +131,27 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        #players-list {
-            display: none;
+        .list-container {
             margin-top: 20px;
             text-align: left;
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
             border-top: 1px solid #333;
             padding-top: 10px;
+            display: none;
         }
 
-        .player-item {
+        .item-row {
             padding: 8px;
             border-bottom: 1px solid #222;
             font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .player-date { color: #ed1b76; }
-        .reg-time { color: #666; font-size: 0.7rem; }
+        .player-number { color: #037a76; font-weight: bold; font-family: monospace; }
+        .hacking-log { color: #ff4d4d; font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -154,7 +163,7 @@
             <div class="shape square" id="secretTrigger"></div>
         </div>
         
-        <!-- Main Form -->
+        <!-- Основной интерфейс -->
         <div id="main-ui">
             <h1 class="text-2xl font-bold mb-6 text-[#ed1b76]">РЕГИСТРАЦИЯ</h1>
             <form id="registrationForm">
@@ -165,7 +174,21 @@
             <button id="hostBtn" class="btn-main btn-secondary">Я ведущий</button>
         </div>
 
-        <!-- Biometry Screen -->
+        <!-- Оповещение о взломе -->
+        <div id="hacking-alert" class="p-4 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm">
+            <p class="font-bold mb-2">⚠️ СИСТЕМА БЕЗОПАСНОСТИ</p>
+            Совершилась попытка взлома, информация об этом будет отправлена ведущему игры.
+            <button onclick="location.reload()" class="btn-main mt-4">ОК</button>
+        </div>
+
+        <!-- Уже зарегистрирован -->
+        <div id="already-registered">
+            <h2 class="text-xl font-bold text-[#037a76] mb-2">ВЫ УЖЕ В ИГРЕ</h2>
+            <p class="text-sm text-gray-400 mb-4">Ваш номер: <span id="myPlayerNum" class="text-[#ed1b76] font-bold"></span></p>
+            <button id="viewListRegistered" class="btn-main btn-secondary">Список участников</button>
+        </div>
+
+        <!-- Биометрия -->
         <div id="biometry-screen">
             <h2 class="text-xl font-bold text-[#ed1b76]">ПРОВЕРКА ЛИЧНОСТИ</h2>
             <div id="face-scan">
@@ -178,7 +201,7 @@
             </div>
         </div>
 
-        <!-- Admin Login -->
+        <!-- Вход админа -->
         <div id="admin-login">
             <h2 class="text-lg font-bold text-[#ed1b76] mb-4">ДОБРО ПОЖАЛОВАТЬ</h2>
             <p class="text-xs mb-4">Введите пароль доступа</p>
@@ -186,32 +209,38 @@
             <button id="loginBtn" class="btn-main">ВХОД</button>
         </div>
 
-        <!-- Admin Panel -->
+        <!-- Панель админа -->
         <div id="admin-panel">
             <h2 class="text-xl font-bold text-green-500 mb-4">МЕНЮ ВЕДУЩЕГО</h2>
-            <div class="text-left space-y-2 text-sm">
-                <p>• Управление игроками: ACTIVE</p>
-                <p>• Статус системы: ONLINE</p>
-                <p>• Режим игры: ОЖИДАНИЕ</p>
+            <div class="flex flex-col gap-2">
+                <button id="showPlayersBtn" class="btn-main">Просмотр участников</button>
+                <button id="showLogsBtn" class="btn-main btn-secondary">Окно входов (Взломы)</button>
+                <button id="clearAllBtn" class="btn-main btn-danger">Аннулирование всех</button>
+                <button onclick="location.reload()" class="btn-main btn-secondary" style="border-color: #ed1b76; color: #ed1b76;">ВЫХОД</button>
             </div>
-            <button onclick="location.reload()" class="btn-main btn-secondary">ВЫХОД</button>
         </div>
 
-        <div id="message-box">
+        <div id="message-box" class="mt-4">
+            <p class="mb-2">Ваш номер: <span id="assignedNum" class="font-bold text-lg"></span></p>
             Спасибо за участие, игра будет проводиться 12.01.2026, 16:00 - 18:00
         </div>
 
-        <button id="toggleList" class="btn-main btn-secondary">Список игроков</button>
-        
-        <div id="players-list">
-            <h3 class="text-sm font-bold mb-2 text-gray-400">ЗАРЕГИСТРИРОВАННЫЕ УЧАСТНИКИ:</h3>
-            <div id="listContent">Загрузка...</div>
+        <!-- Список игроков -->
+        <div id="players-list" class="list-container">
+            <h3 class="text-sm font-bold mb-2 text-gray-400">СПИСОК ИГРОКОВ:</h3>
+            <div id="listContent"></div>
+        </div>
+
+        <!-- Журнал взломов -->
+        <div id="logs-list" class="list-container">
+            <h3 class="text-sm font-bold mb-2 text-red-500">ПОПЫТКИ ВЗЛОМА:</h3>
+            <div id="logsContent"></div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -228,16 +257,24 @@
         const auth = getAuth(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'squid-game-001';
 
-        // Audio Objects
-        const faceFailSound = new Audio('https://files.catbox.moe/gu83qq.m4a');
-        const fingerFailSound = new Audio('https://files.catbox.moe/ays1m0.m4a');
-        const adminAccessSound = new Audio('https://files.catbox.moe/tdhc31.m4a');
-
         async function start() {
-            try { await signInAnonymously(auth); loadPlayers(); } catch (err) {}
+            try { 
+                await signInAnonymously(auth); 
+                checkIfRegistered();
+                loadPlayers();
+                loadLogs();
+            } catch (err) {}
         }
 
-        // UI elements
+        function checkIfRegistered() {
+            const savedNum = localStorage.getItem('squid_game_player_num');
+            if (savedNum) {
+                document.getElementById('main-ui').style.display = 'none';
+                document.getElementById('already-registered').style.display = 'block';
+                document.getElementById('myPlayerNum').innerText = savedNum;
+            }
+        }
+
         const hostBtn = document.getElementById('hostBtn');
         const mainUi = document.getElementById('main-ui');
         const biometry = document.getElementById('biometry-screen');
@@ -246,23 +283,30 @@
         const secretTrigger = document.getElementById('secretTrigger');
         const adminLogin = document.getElementById('admin-login');
         const adminPanel = document.getElementById('admin-panel');
-        const toggleListBtn = document.getElementById('toggleList');
 
-        // Secret logic: Square trigger
+        async function logHacking(type = "Взлом через сканер") {
+            const playerName = localStorage.getItem('squid_game_name') || "Неизвестный";
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'hacking_logs'), {
+                    playerName,
+                    type,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) {}
+        }
+
         secretTrigger.onclick = () => {
+            logHacking("Попытка входа в меню ведущего");
             mainUi.style.display = 'none';
             biometry.style.display = 'none';
+            document.getElementById('already-registered').style.display = 'none';
             adminLogin.style.display = 'block';
-            toggleListBtn.style.display = 'none';
         };
 
-        // Biometry flow
         hostBtn.onclick = () => {
             mainUi.style.display = 'none';
             biometry.style.display = 'block';
-            
             setTimeout(() => {
-                faceFailSound.play();
                 faceScan.innerHTML = '<div class="biometry-circle text-red-500">❌</div><p class="text-red-500">Лицо не распознано</p>';
                 setTimeout(() => {
                     faceScan.classList.add('hidden');
@@ -271,19 +315,14 @@
             }, 2000);
         };
 
-        fingerScan.onclick = () => {
-            fingerFailSound.play();
-            fingerScan.innerHTML = '<div class="biometry-circle text-red-500">❌</div><p class="text-red-500">Отпечаток не распознан</p>';
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
+        fingerScan.onclick = async () => {
+            biometry.style.display = 'none';
+            document.getElementById('hacking-alert').style.display = 'block';
+            await logHacking("Взлом через отпечаток");
         };
 
-        // Password verification
         document.getElementById('loginBtn').onclick = () => {
-            const pass = document.getElementById('adminPassword').value;
-            if (pass === "ILOVESOFKA") {
-                adminAccessSound.play();
+            if (document.getElementById('adminPassword').value === "Соня") {
                 adminLogin.style.display = 'none';
                 adminPanel.style.display = 'block';
             } else {
@@ -292,44 +331,94 @@
             }
         };
 
-        // Firebase Logic
         const form = document.getElementById('registrationForm');
         form.onsubmit = async (e) => {
             e.preventDefault();
-            if (!auth.currentUser) return;
+            if (!auth.currentUser || localStorage.getItem('squid_game_player_num')) return;
+
             const name = document.getElementById('userName').value;
             const dob = document.getElementById('userDob').value;
+            const randomNum = String(Math.floor(Math.random() * 456) + 1).padStart(3, '0');
+
             try {
+                localStorage.setItem('squid_game_name', name);
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'players'), {
-                    name, dob, timestamp: serverTimestamp()
+                    name, dob, playerNum: randomNum, timestamp: serverTimestamp()
                 });
+                
+                localStorage.setItem('squid_game_player_num', randomNum);
+                
+                document.getElementById('assignedNum').innerText = randomNum;
                 form.style.display = 'none';
                 hostBtn.style.display = 'none';
                 document.getElementById('message-box').style.display = 'block';
-            } catch (error) {}
+                // Показываем список сразу после регистрации
+                document.getElementById('players-list').style.display = 'block';
+            } catch (error) {
+                console.error("Ошибка:", error);
+            }
+        };
+
+        // Кнопка списка для уже зарегистрированных
+        document.getElementById('viewListRegistered').onclick = () => {
+            const list = document.getElementById('players-list');
+            list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        };
+
+        document.getElementById('showPlayersBtn').onclick = () => {
+            document.getElementById('logs-list').style.display = 'none';
+            const list = document.getElementById('players-list');
+            list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        };
+
+        document.getElementById('showLogsBtn').onclick = () => {
+            document.getElementById('players-list').style.display = 'none';
+            const list = document.getElementById('logs-list');
+            list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        };
+
+        document.getElementById('clearAllBtn').onclick = async () => {
+            if (!confirm("УДАЛИТЬ ВСЕХ?")) return;
+            try {
+                const batch = writeBatch(db);
+                const pSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'));
+                const lSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'hacking_logs'));
+                pSnap.forEach(d => batch.delete(d.ref));
+                lSnap.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                localStorage.clear();
+                location.reload();
+            } catch (e) { alert("Ошибка"); }
         };
 
         function loadPlayers() {
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'players'), (snapshot) => {
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'players'), (s) => {
                 const list = document.getElementById('listContent');
                 list.innerHTML = '';
-                const players = [];
-                snapshot.forEach(doc => players.push(doc.data()));
-                players.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-                players.forEach(p => {
-                    const time = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleTimeString() : '...';
+                s.docs.forEach(doc => {
+                    const p = doc.data();
                     const div = document.createElement('div');
-                    div.className = 'player-item';
-                    div.innerHTML = `<div><b>${p.name}</b> (${p.dob})</div><div class="reg-time">Зарегистрирован: ${time}</div>`;
+                    div.className = 'item-row';
+                    div.innerHTML = `<div><b>${p.name}</b></div><div class="player-number">#${p.playerNum}</div>`;
                     list.appendChild(div);
                 });
             });
         }
 
-        toggleListBtn.onclick = () => {
-            const list = document.getElementById('players-list');
-            list.style.display = list.style.display === 'block' ? 'none' : 'block';
-        };
+        function loadLogs() {
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'hacking_logs'), (s) => {
+                const list = document.getElementById('logsContent');
+                list.innerHTML = '';
+                s.docs.forEach(doc => {
+                    const l = doc.data();
+                    const t = l.timestamp ? new Date(l.timestamp.seconds * 1000).toLocaleTimeString() : '...';
+                    const div = document.createElement('div');
+                    div.className = 'item-row hacking-log';
+                    div.innerHTML = `<div>[${t}] <b>${l.playerName}</b></div><div>${l.type} ❌</div>`;
+                    list.appendChild(div);
+                });
+            });
+        }
 
         start();
     </script>
